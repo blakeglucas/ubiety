@@ -11,13 +11,15 @@ final class AppGroup: Codable, Identifiable {
     var cooldownTime: Int
     var wakeupTime: Date?
     var bedtime: Date?
+    var enableRegen: Bool = false
     
     init(name: String,
-         selectedApps: FamilyActivitySelection = FamilyActivitySelection(),
+         selectedApps: FamilyActivitySelection = FamilyActivitySelection(includeEntireCategory: true),
          activeTime: Int,
          cooldownTime: Int,
          wakeupTime: Date?,
          bedtime: Date?,
+         enableRegen: Bool?,
     ) {
         self.name = name
         self.selectedApps = selectedApps
@@ -25,10 +27,11 @@ final class AppGroup: Codable, Identifiable {
         self.cooldownTime = cooldownTime
         self.wakeupTime = wakeupTime
         self.bedtime = bedtime
+        self.enableRegen = enableRegen ?? false;
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, name, selectedApps, activeTime, cooldownTime, wakeupTime, bedtime
+        case id, name, selectedApps, activeTime, cooldownTime, wakeupTime, bedtime, enableRegen
     }
     
     init(from decoder: any Decoder) throws {
@@ -40,6 +43,7 @@ final class AppGroup: Codable, Identifiable {
         wakeupTime = try container.decodeIfPresent(Date.self, forKey: .wakeupTime)
         bedtime = try container.decodeIfPresent(Date.self, forKey: .bedtime)
         selectedApps = try container.decode(FamilyActivitySelection.self, forKey: .selectedApps)
+        enableRegen = try container.decode(Bool.self, forKey: .enableRegen)
     }
     
     func encode(to encoder: any Encoder) throws {
@@ -51,5 +55,6 @@ final class AppGroup: Codable, Identifiable {
         try container.encode(cooldownTime, forKey: .cooldownTime)
         try container.encodeIfPresent(wakeupTime, forKey: .wakeupTime)
         try container.encodeIfPresent(bedtime, forKey: .bedtime)
+        try container.encode(enableRegen, forKey: .enableRegen)
     }
 }

@@ -15,6 +15,7 @@ struct AppGroupFormView: View {
     @State private var wakeupTime: Date
     @State private var enforceBedtime: Bool
     @State private var bedtime: Date
+    @State private var enableRegen: Bool
     
     @State private var title: String
     @State private var isPickerShown = false
@@ -28,7 +29,7 @@ struct AppGroupFormView: View {
             title = "Create App Group"
         }
         _name = State(initialValue: group?.name ?? "")
-        _selectedApps = State(initialValue: group?.selectedApps ?? FamilyActivitySelection())
+        _selectedApps = State(initialValue: group?.selectedApps ?? FamilyActivitySelection(includeEntireCategory: true))
         _activeTime = State(initialValue: group?.activeTime ?? 30)
         _cooldownTime = State(initialValue: group?.cooldownTime ?? 30)
         _enforceWakeup = State(initialValue: group?.wakeupTime != nil)
@@ -37,27 +38,32 @@ struct AppGroupFormView: View {
         _enforceBedtime = State(initialValue: group?.bedtime != nil)
         _bedtime = State(initialValue: group?.bedtime
                          ?? Calendar.current.date(bySettingHour: 23, minute: 0, second: 0, of: .now)!)
+        _enableRegen = State(initialValue: group?.enableRegen ?? false)
     }
     
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Name", text: $name)
-                    Stepper("Active: \(activeTime) minutes", value: $activeTime, in: 15...240, step: 5)
-                    Stepper("Cooldown: \(cooldownTime) minutes", value: $cooldownTime, in: 15...240, step: 5)
+                    TextField("Name", text: $name).bold()
+                    Stepper("Active: \(activeTime) mins", value: $activeTime, in: 15...60, step: 5)
+                    Stepper("Cooldown: \(cooldownTime) mins", value: $cooldownTime, in: 15...60, step: 5)
+                    Toggle("Regen During Idle Time", isOn: $enableRegen)
+                }
+                
+                Section {
                     Toggle("Enforce Wakeup", isOn: $enforceWakeup)
                     if enforceWakeup {
-                        DatePicker("Block Until:", selection: $wakeupTime, displayedComponents: .hourAndMinute)
+                        DatePicker("Block Until", selection: $wakeupTime, displayedComponents: .hourAndMinute)
                     }
                     Toggle("Enforce Bedtime", isOn: $enforceBedtime)
                     if enforceBedtime {
-                        DatePicker("Block After:", selection: $bedtime, displayedComponents: .hourAndMinute)
+                        DatePicker("Block After", selection: $bedtime, displayedComponents: .hourAndMinute)
                     }
                 }
                 
                 Section {
-                    Button("Select Apps") {isPickerShown = true }
+                    Button("Select Apps") { isPickerShown = true }
                         .familyActivityPicker(isPresented: $isPickerShown, selection: $selectedApps)
                 }
                 
@@ -92,6 +98,7 @@ struct AppGroupFormView: View {
                             group.cooldownTime = cooldownTime
                             group.wakeupTime = enforceWakeup ? wakeupTime : nil
                             group.bedtime = enforceBedtime ? bedtime : nil
+                            group.enableRegen = enableRegen
                         } else {
                             group = AppGroup(name: name,
                                              selectedApps: selectedApps,
@@ -99,6 +106,7 @@ struct AppGroupFormView: View {
                                              cooldownTime: cooldownTime,
                                              wakeupTime: enforceWakeup ? wakeupTime : nil,
                                              bedtime: enforceBedtime ? bedtime : nil,
+                                             enableRegen: enableRegen
                                             )
                             context.insert(group!)
                         }
