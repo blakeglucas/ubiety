@@ -56,7 +56,7 @@ enum Enforcer {
         Log.startupCheck()
         let groups = try EnforcerContext.getAppGroups()
         for group in groups {
-            try start(appGroup: group)
+            start(appGroup: group)
         }
     }
     
@@ -64,7 +64,7 @@ enum Enforcer {
         Log.debug("registered '\(appGroup.name)' (\(appGroup.id))")
         EnforcerContext.save(appGroup: appGroup)
         stop(appGroup.id)
-        try start(appGroup: appGroup)
+        start(appGroup: appGroup)
     }
     
     static func unregister(id: UUID) {
@@ -73,13 +73,19 @@ enum Enforcer {
         EnforcerContext.remove(id: id)
     }
     
-    static func start(appGroup: AppGroup) throws {
+    static func start(appGroup: AppGroup) {
         Log.debug("start watching '\(appGroup.name)' (\(appGroup.id))")
-        try startTicking(appGroup: appGroup)
-        try startUseTracking(group: appGroup)
+        startTicking(appGroup: appGroup)
+        if appGroup.enableRegen {
+            do {
+                try startUseTracking(group: appGroup)
+            } catch {
+                Log.error("startUseTracking call failed: \(error)", category: "start")
+            }
+        }
     }
     
-    static func startTicking(appGroup: AppGroup) throws {
+    private static func startTicking(appGroup: AppGroup) {
         Log.debug("ticking for '\(appGroup.name)' group")
         let event = DeviceActivityEvent(
             applications: appGroup.selectedApps.applicationTokens,
@@ -87,28 +93,32 @@ enum Enforcer {
             webDomains: appGroup.selectedApps.webDomainTokens,
             threshold: DateComponents(minute: 1)
         )
-        try center.startMonitoring(
-            .init(.tick, appGroup.id),
-            during: DeviceActivitySchedule(
-                intervalStart: DateComponents(hour: 0, minute: 0),
-                intervalEnd: DateComponents(hour: 23, minute: 59),
-                repeats: true
-            ),
-            events: [.limit: event]
-        )
-    }
-    
-    static func onTick(group: AppGroup) throws {
-        let ticks = EnforcerContext.tick(id: group.id)
-        Log.debug("\(group.name): \(ticks) / \(group.activeTime)")
-        if ticks > group.activeTime {
-            try startCooldown(appGroup: group)
-        } else {
-            try startTicking(appGroup: group)
+        do {
+            try center.startMonitoring(
+                .init(.tick, appGroup.id),
+                during: DeviceActivitySchedule(
+                    intervalStart: DateComponents(hour: 0, minute: 0),
+                    intervalEnd: DateComponents(hour: 23, minute: 59),
+                    repeats: true
+                ),
+                events: [.limit: event]
+            )
+        } catch {
+            Log.error("startMonitoring call failed: \(error)", category: "startTicking")
         }
     }
     
-    static func startUseTracking(group: AppGroup) throws {
+    static func onTick(group: AppGroup) {
+        let ticks = EnforcerContext.tick(id: group.id)
+        Log.debug("\(group.name): \(ticks) / \(group.activeTime)")
+        if ticks > group.activeTime {
+            startCooldown(appGroup: group)
+        } else {
+            startTicking(appGroup: group)
+        }
+    }
+    
+    private static func startUseTracking(group: AppGroup) throws {
         let now = Date.now
         for slot in 0..<3 {
             let start = now.addingTimeInterval(Double(slot) * 5 * 60)
@@ -131,14 +141,17 @@ enum Enforcer {
     }
     
     static func checkUsageRestore(group: AppGroup, startNext: Bool = false) {
+        if !group.enableRegen {
+            return
+        }
         Log.debug("checking usage restoration for \(group.name) (\(group.id))")
         let ticks = EnforcerContext.getTicks(id: group.id)
         let lastTick = EnforcerContext.getLastTick(id: group.id)
         Log.debug("ticks: \(ticks), lastTick: \(lastTick.map { $0.formatted(.iso8601) } ?? "never" )")
-        if abs(Date.now.timeIntervalSince(lastTick ?? Date.now)) >= 9 * 60 && ticks > 0 { // TODO tune time
+        if abs(Date.now.timeIntervalSince(lastTick ?? Date.now)) >= 12 * 60 && ticks > 0 { // TODO tune time
             let newTicks = EnforcerContext.tick(id: group.id, delta: -5)
             Log.debug("\(group.name) inactive, accumulated ticks now: \(newTicks)")
-            notify(title: "Bonus Time!", body: "Inactivity reward: 5 bonus minutes for '\(group.name)'")
+//            notify(title: "Bonus Time!", body: "Inactivity reward: 5 bonus minutes for '\(group.name)'")
         } else {
             Log.debug("no bonus time for \(group.name)")
         }
@@ -151,43 +164,46 @@ enum Enforcer {
         }
     }
     
-    static func resetUsage(appGroup: AppGroup) throws {
+    private static func resetUsage(appGroup: AppGroup) {
         center.stopMonitoring([.init(.tick, appGroup.id)])
-        center.stopMonitoring([.init(.usage, appGroup.id)])
         EnforcerContext.resetTicks(id: appGroup.id)
-        try start(appGroup: appGroup)
+        start(appGroup: appGroup)
     }
     
-    static func startCooldown(appGroup: AppGroup) throws {
-        Log.debug("starting cooldown \(appGroup.name) (\(appGroup.id))")
+    private static func startCooldown(appGroup: AppGroup) {
         let now = Date.now
         let cooldownLength = max(appGroup.cooldownTime, 15)
         let end = now.addingTimeInterval(Double(cooldownLength) * 60)
+        Log.debug("starting cooldown \(appGroup.name) (\(appGroup.id)), ends \(end.formatted(.iso8601))")
         for token in appGroup.selectedApps.applicationTokens {
             EnforcerContext.setCooldown(token: token, cooldownEnd: end)
         }
-        try shield(appGroup: appGroup, phase: Phase.cooldown)
-        try center.startMonitoring(
-            .init(.cooldown, appGroup.id),
-            during: DeviceActivitySchedule(
-                intervalStart: cal.dateComponents(fields, from: now),
-                intervalEnd: cal.dateComponents(fields, from: end),
-                repeats: false
+        shield(appGroup: appGroup, phase: Phase.cooldown)
+        do {
+            try center.startMonitoring(
+                .init(.cooldown, appGroup.id),
+                during: DeviceActivitySchedule(
+                    intervalStart: cal.dateComponents(fields, from: now),
+                    intervalEnd: cal.dateComponents(fields, from: end),
+                    repeats: false
+                )
             )
-        )
+        } catch {
+            Log.error("startMonitoring call failed: \(error)", category: "startCooldown")
+        }
     }
     
-    static func onCooldownEnd(group: AppGroup) throws {
+    static func onCooldownEnd(group: AppGroup) {
         Log.debug("cooldown end for: \(group.name) (\(group.id))")
         for token in group.selectedApps.applicationTokens {
-            EnforcerContext.setCooldown(token: token, cooldownEnd: nil) // FIXME this will clear overlapping cooldowns for same app across groups
+            EnforcerContext.setCooldown(token: token, cooldownEnd: nil) // FIXME this will clear overlapping cooldowns for same app across groups (right?)
         }
         Enforcer.unshield(id: group.id, phase: .cooldown)
         notify(title: "Cooldown Over", body: "'\(group.name)' group is now unlocked")
-        try Enforcer.resetUsage(appGroup: group)
+        Enforcer.resetUsage(appGroup: group)
     }
     
-    static func shield(appGroup: AppGroup, phase: Phase) throws {
+    static func shield(appGroup: AppGroup, phase: Phase) {
         Log.debug("shielding \(appGroup.name) (\(appGroup.id)), phase: \(phase.rawValue)")
         let store = ManagedSettingsStore(named: .init("\(phase.rawValue).\(appGroup.id)"))
         store.shield.applications = appGroup.selectedApps.applicationTokens

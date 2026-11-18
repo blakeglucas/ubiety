@@ -24,29 +24,25 @@ class EnforcerExtension: DeviceActivityMonitor {
     }
 
     override func intervalDidStart(for activity: DeviceActivityName) {
-        Log.debug("interval started...")
         guard let (phase, id) = activity.parsed,
             let group = EnforcerContext.load(id: id)
         else { return }
-        Log.debug("  \(group.name): \(phase)")
         if phase == .night {
-            _ = try? Enforcer.shield(appGroup: group, phase: .night)
+            Enforcer.shield(appGroup: group, phase: .night)
         } else if phase == .usage {
             Enforcer.checkUsageRestore(group: group)
         }
     }
 
     override func intervalDidEnd(for activity: DeviceActivityName) {
-        Log.debug("interval ended...")
         guard let (phase, id) = activity.parsed,
             let group = EnforcerContext.load(id: id)
         else { return }
-        Log.debug("  \(group.name): \(phase)")
         switch phase {
         case .night:
             Enforcer.unshield(id: id, phase: .night)
         case .cooldown:
-            try? Enforcer.onCooldownEnd(group: group)
+            Enforcer.onCooldownEnd(group: group)
         case .tick:
             break
         case .usage:
