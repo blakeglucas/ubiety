@@ -24,3 +24,4 @@ The only technical requirements beyond a good enough Mac computer are access to 
 - [ ] Bedtime/Wakeup guards
 - [ ] App signing with FamilyControls entitlement
 - [ ] Improve cooldown handling if an app is in multiple groups (prevent apps being in multiple groups?)
+- [ ] Category and Web Domain handling
