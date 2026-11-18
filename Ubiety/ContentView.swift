@@ -26,8 +26,8 @@ struct ContentView: View {
                             if isOnCooldown {
                                 Image(systemName: "lock.shield")
                             } else {
-                                ProgressRing(progress: Double(ticks) / Double(group.activeTime + 1), lineWidth: 4)
-                                    .frame(width:20, height:20)
+                                ProgressRing(progress: Double(ticks) / Double(group.activeTime + 1), lineWidth: 3)
+                                    .frame(width:16, height:16)
                                     .tint(.purple)
                             }
                         }
