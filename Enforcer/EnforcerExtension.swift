@@ -20,7 +20,7 @@ class EnforcerExtension: DeviceActivityMonitor {
         guard let (phase, id) = activity.parsed, phase == .tick,
             let group = EnforcerContext.load(id: id)
         else { return }
-        try? Enforcer.onTick(group: group)
+        Enforcer.onTick(group: group)
     }
 
     override func intervalDidStart(for activity: DeviceActivityName) {

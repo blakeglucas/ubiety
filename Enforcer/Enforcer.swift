@@ -111,7 +111,7 @@ enum Enforcer {
     static func onTick(group: AppGroup) {
         let ticks = EnforcerContext.tick(id: group.id)
         Log.debug("\(group.name): \(ticks) / \(group.activeTime)")
-        if ticks > group.activeTime {
+        if ticks > 0 {
             startCooldown(appGroup: group)
         } else {
             startTicking(appGroup: group)
@@ -176,7 +176,11 @@ enum Enforcer {
         let end = now.addingTimeInterval(Double(cooldownLength) * 60)
         Log.debug("starting cooldown \(appGroup.name) (\(appGroup.id)), ends \(end.formatted(.iso8601))")
         for token in appGroup.selectedApps.applicationTokens {
-            EnforcerContext.setCooldown(token: token, cooldownEnd: end)
+            do {
+                try EnforcerContext.setCooldown(token: token, cooldownEnd: end)
+            } catch {
+                Log.error("failed to set cooldown for \(token.debugID): \(error)")
+            }
         }
         shield(appGroup: appGroup, phase: Phase.cooldown)
         do {
@@ -196,7 +200,15 @@ enum Enforcer {
     static func onCooldownEnd(group: AppGroup) {
         Log.debug("cooldown end for: \(group.name) (\(group.id))")
         for token in group.selectedApps.applicationTokens {
-            EnforcerContext.setCooldown(token: token, cooldownEnd: nil) // FIXME this will clear overlapping cooldowns for same app across groups (right?)
+            do {
+                try
+                EnforcerContext.setCooldown(token: token, cooldownEnd: nil) // FIXME this will clear overlapping cooldowns for same app across groups (right?)
+                if let d = try? EnforcerContext.getCooldown(token: token) {
+                    Log.error("stale cooldown: \(d.formatted(.iso8601))")
+                }
+            } catch {
+                Log.error("failed to clear cooldown for \(token.debugID): \(error)")
+            }
         }
         Enforcer.unshield(id: group.id, phase: .cooldown)
         notify(title: "Cooldown Over", body: "'\(group.name)' group is now unlocked")

@@ -21,7 +21,7 @@ class ShieldConfigurationExtension : ShieldConfigurationDataSource {
     override func configuration(shielding application: Application) -> ShieldConfiguration {
         var cooldown: Date? = nil
         if let token = application.token {
-            cooldown = EnforcerContext.getCooldown(token: token)
+            cooldown = try? EnforcerContext.getCooldown(token: token)
         }
         return makeShield(name: application.localizedDisplayName, cooldownEnd: cooldown)
     }
@@ -30,7 +30,7 @@ class ShieldConfigurationExtension : ShieldConfigurationDataSource {
                                 in category: ActivityCategory) -> ShieldConfiguration {
         var cooldown: Date? = nil
         if let token = application.token {
-            cooldown = EnforcerContext.getCooldown(token: token)
+            cooldown = try? EnforcerContext.getCooldown(token: token)
         }
         return makeShield(name: application.localizedDisplayName, cooldownEnd: cooldown)
     }
@@ -46,6 +46,7 @@ class ShieldConfigurationExtension : ShieldConfigurationDataSource {
 
     private func makeShield(name: String?, cooldownEnd: Date? = nil) -> ShieldConfiguration {
         let availAtStmt = cooldownEnd.map { "at \($0.formatted(date: .omitted, time: .shortened))" } ?? "soon"
+        Log.error("making shield for cooldown ending \(availAtStmt)")
         return ShieldConfiguration(
             backgroundBlurStyle: .systemUltraThinMaterial,
             backgroundColor: .systemIndigo.withAlphaComponent(0.6),
@@ -53,7 +54,7 @@ class ShieldConfigurationExtension : ShieldConfigurationDataSource {
             title: .init(text: "\(name ?? "This app") is on cooldown", color: .label),
             subtitle: .init(text: "It'll be back \(availAtStmt).", color: .secondaryLabel),
 //            primaryButtonLabel: .init(text: "OK", color: .white),
-//            primaryButtonBackgroundColor: .systemPurple,
+//            primaryButtonBackgroundColor: .purple,
         )
     }
 }

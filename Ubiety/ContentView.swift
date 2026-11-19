@@ -17,7 +17,7 @@ struct ContentView: View {
             let _ = signal.version;
             List(appGroups) { group in
                 let ticks = EnforcerContext.getTicks(id: group.id)
-                let isOnCooldown = group.selectedApps.applicationTokens.allSatisfy({ EnforcerContext.getCooldown(token: $0) != nil})
+                let isOnCooldown = group.selectedApps.applicationTokens.allSatisfy({ try! EnforcerContext.getCooldown(token: $0) != nil})
                 Button {
                     editGroup = group;
                 } label: {

@@ -25,6 +25,14 @@ extension ApplicationToken {
 final class EnforcerContext {
     private static let defaults = UserDefaults(suiteName: "group.dev.bgcl.ubiety")!
     
+    private static let cooldownDir: URL? = {
+        guard let container = FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: "group.dev.bgcl.ubiety") else { return nil }
+        let dir = container.appendingPathComponent("cooldowns", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }()
+    
     static func save(appGroup: AppGroup) {
         defaults.set(try? JSONEncoder().encode(appGroup), forKey: "appGroup.\(appGroup.id)")
     }
@@ -72,16 +80,31 @@ final class EnforcerContext {
         return defaults.object(forKey: "lastTick.appGroup.\(id)") as? Date
     }
     
-    static func setCooldown(token: ApplicationToken, cooldownEnd: Date?) {
-        if cooldownEnd == nil {
-            defaults.removeObject(forKey: "cdts.app.\(token)")
+    private static func cooldownURL(_ token: ApplicationToken) throws -> URL? {
+        let data = try JSONEncoder().encode(token)
+        let name = data.base64EncodedString()
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "+", with: "-")
+        return cooldownDir?.appendingPathComponent(name)
+    }
+    
+    static func setCooldown(token: ApplicationToken, cooldownEnd: Date?) throws {
+        guard let url = try cooldownURL(token) else {
+            throw MessageError(message: "failed to get cooldownURL")
+        }
+        if let cooldownEnd {
+            let text = cooldownEnd.ISO8601Format()
+            do { try Data(text.utf8).write(to: url, options: .atomic) }
+            catch { Log.error("cooldown write failed: \(error)", category: "cooldown") }
         } else {
-            defaults.set(cooldownEnd, forKey: "cdts.app.\(token)")
+            try? FileManager.default.removeItem(at: url)
         }
         SharedChangeObserver.post()
     }
     
-    static func getCooldown(token: ApplicationToken) -> Date? {
-        return defaults.object(forKey: "cdts.app.\(token)") as? Date
+    static func getCooldown(token: ApplicationToken) throws -> Date? {
+        guard let url = try cooldownURL(token),
+              let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+          return try Date(text, strategy: .iso8601)
     }
 }
