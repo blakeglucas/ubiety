@@ -111,7 +111,7 @@ enum Enforcer {
     static func onTick(group: AppGroup) {
         let ticks = EnforcerContext.tick(id: group.id)
         Log.debug("\(group.name): \(ticks) / \(group.activeTime)")
-        if ticks > 0 {
+        if ticks > group.activeTime {
             startCooldown(appGroup: group)
         } else {
             startTicking(appGroup: group)
