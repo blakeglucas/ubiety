@@ -87,24 +87,31 @@ enum Enforcer {
     
     private static func startTicking(appGroup: AppGroup) {
         Log.debug("ticking for '\(appGroup.name)' group")
-        let event = DeviceActivityEvent(
-            applications: appGroup.selectedApps.applicationTokens,
-            categories: appGroup.selectedApps.categoryTokens,
-            webDomains: appGroup.selectedApps.webDomainTokens,
-            threshold: DateComponents(minute: 1)
-        )
+        let ticks = EnforcerContext.getTicks(id: appGroup.id)
+        let remaining = max(appGroup.activeTime - ticks, 0)
+        Log.debug("\(appGroup.name) has \(remaining) ticks")
+        var events: [DeviceActivityEvent.Name: DeviceActivityEvent] = [:]
+        for minute in 1...remaining+1 {
+            events[.init("tick.\(minute)")] = DeviceActivityEvent(
+                applications: appGroup.selectedApps.applicationTokens,
+                categories: appGroup.selectedApps.categoryTokens,
+                webDomains: appGroup.selectedApps.webDomainTokens,
+                threshold: DateComponents(minute: minute)
+            )
+        }
         do {
+            center.stopMonitoring([.init(.tick, appGroup.id)])
             try center.startMonitoring(
                 .init(.tick, appGroup.id),
                 during: DeviceActivitySchedule(
                     intervalStart: DateComponents(hour: 0, minute: 0),
-                    intervalEnd: DateComponents(hour: 23, minute: 59),
+                    intervalEnd: DateComponents(hour: 23, minute: 59, second: 59),
                     repeats: true
                 ),
-                events: [.limit: event]
+                events: events
             )
         } catch {
-            Log.error("startMonitoring call failed: \(error)", category: "startTicking")
+            Log.error("startMonitoring failed: \(error)", category: "startTicking")
         }
     }
     
@@ -113,8 +120,6 @@ enum Enforcer {
         Log.debug("\(group.name): \(ticks) / \(group.activeTime)")
         if ticks > group.activeTime {
             startCooldown(appGroup: group)
-        } else {
-            startTicking(appGroup: group)
         }
     }
     
@@ -152,6 +157,7 @@ enum Enforcer {
             let newTicks = EnforcerContext.tick(id: group.id, delta: -5)
             Log.debug("\(group.name) inactive, accumulated ticks now: \(newTicks)")
 //            notify(title: "Bonus Time!", body: "Inactivity reward: 5 bonus minutes for '\(group.name)'")
+            startTicking(appGroup: group)
         } else {
             Log.debug("no bonus time for \(group.name)")
         }
