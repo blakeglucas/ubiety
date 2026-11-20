@@ -62,6 +62,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		25438EE930B0F41B00C64827 /* Exceptions for "Ubiety" folder in "Ubiety" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 000000000000000100000000 /* Ubiety */;
+		};
 		2598A06C30744D0F0063699A /* Exceptions for "Enforcer" folder in "Enforcer" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -115,6 +122,7 @@
 		000000000000000000000010 /* Ubiety */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
+				25438EE930B0F41B00C64827 /* Exceptions for "Ubiety" folder in "Ubiety" target */,
 				2598A07630744F1C0063699A /* Exceptions for "Ubiety" folder in "Enforcer" target */,
 				25A0562130AC093300E5020A /* Exceptions for "Ubiety" folder in "ShieldConfiguration" target */,
 			);
@@ -493,6 +501,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Ubiety/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Ubiety;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -534,6 +543,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Ubiety/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Ubiety;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
