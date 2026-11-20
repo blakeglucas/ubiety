@@ -52,7 +52,7 @@ class ShieldConfigurationExtension : ShieldConfigurationDataSource {
             backgroundColor: .systemIndigo.withAlphaComponent(0.6),
             icon: UIImage(systemName: "hourglass"),
             title: .init(text: "\(name ?? "This app") is on cooldown", color: .label),
-            subtitle: .init(text: "It'll be back \(availAtStmt).", color: .secondaryLabel),
+            subtitle: .init(text: "Available again \(availAtStmt)", color: .secondaryLabel),
 //            primaryButtonLabel: .init(text: "OK", color: .white),
 //            primaryButtonBackgroundColor: .purple,
         )
